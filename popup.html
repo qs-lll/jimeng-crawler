@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Info Plugin</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      width: 380px;
+      min-height: 300px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+    }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .header h1 { font-size: 16px; color: #333; margin: 0; }
+    .status { font-size: 11px; padding: 3px 8px; border-radius: 4px; background: #e0e0e0; color: #666; }
+    .status.success { background: #e8f5e9; color: #2e7d32; }
+    .status.error { background: #ffebee; color: #c62828; }
+    .status.loading { background: #fff3e0; color: #e65100; }
+    .section { background: white; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .section-title { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 8px; }
+    label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+    input[type="text"], textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+    input:focus, textarea:focus { outline: none; border-color: #4285f4; }
+    textarea { resize: vertical; min-height: 80px; }
+    .image-row { display: flex; gap: 8px; }
+    .image-box { flex: 1; text-align: center; }
+    .image-box label { text-align: center; }
+    .image-preview { width: 100%; max-height: 80px; border-radius: 4px; object-fit: contain; background: #f0f0f0; }
+    .row { display: flex; gap: 8px; }
+    .row > div { flex: 1; }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    .btn { flex: 1; padding: 10px; border: none; border-radius: 4px; font-size: 13px; cursor: pointer; }
+    .btn-primary { background: #4285f4; color: white; }
+    .btn-primary:hover { background: #3367d6; }
+    .btn-success { background: #34a853; color: white; }
+    .btn-success:hover { background: #2e7d32; }
+    .btn-warning { background: #ff9800; color: white; }
+    .btn-warning:hover { background: #f57c00; }
+    .btn-small { padding: 6px 12px; font-size: 12px; }
+    .toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 8px 16px; border-radius: 4px; font-size: 12px; opacity: 0; transition: opacity 0.3s; }
+    .toast.show { opacity: 1; }
+    .error-page { display: none; text-align: center; padding: 40px 20px; }
+    .error-page.show { display: block; }
+    .error-icon { font-size: 48px; margin-bottom: 16px; }
+    .error-title { font-size: 18px; color: #333; margin-bottom: 8px; }
+    .error-desc { font-size: 13px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+    .main-content { display: block; }
+    .main-content.hidden { display: none; }
+    .image-preview.hidden { display: none !important; }
+    .webhook-row { display: flex; gap: 8px; align-items: flex-end; }
+    .webhook-row input { flex: 1; }
+    .webhook-row .btn { flex: 0 0 auto; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>图片信息</h1>
+    <span id="status" class="status">等待获取...</span>
+  </div>
+
+  <!-- 主内容区 -->
+  <div id="mainContent" class="main-content">
+    <!-- Webhook 设置 -->
+    <div class="section">
+      <div class="section-title">Webhook 设置</div>
+      <div>
+        <label>格式</label>
+        <select id="webhookType" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px;margin-bottom:8px">
+          <option value="default">默认 (GET - URL参数)</option>
+          <option value="discord">Discord (POST - 嵌入消息)</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="webhookUrl" placeholder="Webhook URL" style="flex:1">
+        <button id="saveWebhookBtn" class="btn btn-primary btn-small">保存</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">图片</div>
+      <label>图片链接</label>
+      <input type="text" id="imageUrl" placeholder="图片链接">
+      <div class="image-row" style="margin-top:8px">
+        <div class="image-box"><label>预览</label><img id="imagePreview" class="image-preview"></div>
+        <div class="image-box"><label>参考图</label><img id="refImagePreview" class="image-preview"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>参考图类型</label><input type="text" id="refImageType" placeholder="如:智能参考"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">提示词</div>
+      <textarea id="prompt" placeholder="提示词"></textarea>
+    </div>
+
+    <div class="section">
+      <div class="section-title">参数</div>
+      <div class="row">
+        <div><label>模型</label><input type="text" id="model" placeholder="如:4.5"></div>
+        <div><label>比例</label><input type="text" id="ratio" placeholder="如:9:16"></div>
+        <div><label>质量</label><input type="text" id="quality" placeholder="如:2K"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">JSON</div>
+      <textarea id="jsonOutput" placeholder="JSON"></textarea>
+      <div class="btn-row">
+        <button id="refreshBtn" class="btn btn-primary">刷新</button>
+        <button id="copyBtn" class="btn btn-success">复制</button>
+        <button id="webhookBtn" class="btn btn-warning">发送Webhook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 错误页面 -->
+  <div id="errorPage" class="error-page">
+    <div class="error-icon">🔍</div>
+    <div class="error-title">无法获取图片信息</div>
+    <div class="error-desc">
+      请确保：<br>
+      1. 已打开即梦AI网站<br>
+      2. 已点击图片查看详情<br>
+      3. 页面已完全加载
+    </div>
+    <button id="retryBtn" class="btn btn-primary">重新获取</button>
+  </div>
+
+  <div id="toast" class="toast">已复制</div>
+  <script src="popup.js"></script>
+</body>
+</html>
