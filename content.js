@@ -30,6 +30,15 @@ function extractImageInfo() {
       result.imageUrl = imgElement.src;
     }
 
+    // 1.1 如果没有找到图片，尝试获取视频链接
+    if (!result.imageUrl) {
+      const videoElement = document.querySelector('video');
+      if (videoElement && videoElement.src) {
+        result.imageUrl = videoElement.src;
+        console.log('[AI Info] 检测到视频链接:', result.imageUrl);
+      }
+    }
+
     // 2. 获取提示词和详细信息
     const detailContainer = document.querySelector('.detail-info-uin_og');
 
